@@ -1,53 +1,275 @@
 #include <iostream>
-#include <memory>
+#include <sys/types.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <string.h>
+#include <string>
 #include <sys/un.h>
-#include "util.h"
-
+#include <map>
+#include <iterator> 
+#include <cstdlib>
+#include <ctime>
+ 
 using namespace std;
 
-// Almacenamiento KV
-KVStore db;
-
-int main(int argc, char** argv) {	
-	
-	int sflag = 0;
-	int opt;
-	
-	// Procesar opciones de linea de comando
-    while ((opt = getopt (argc, argv, "s:")) != -1) {
-        switch (opt)
-		{
-			/* Procesar el flag s si el usuario lo ingresa */
-			case 's':
-				sflag = 1;
-				break;
-			default:
-				return EXIT_FAILURE;
-          }	    	
+string SelectInfo(string str, int inst){
+    string str2;
+    bool copy = false;
+    bool Error = true;
+    if (inst == 1 || inst == 2){
+        bool a = false;
+        for (int i = 0; i < (int)str.length()-2; ++i){
+            if (a){
+                if (str[i] == ','){
+                    Error = false;
+                }
+            }
+            if (str[i] == '('){
+                a = true;
+            }
+        }
+        if (!a){
+            return NULL;
+        }
     }
-	
-	// Uso elemental del almacenamiento KV:
-	
-	// Creamos un arreglo de bytes a mano
-	byte data[] = { 0x01, 0x01, 0x01, 0x01, 0x01 };
+    if (inst == 0){
+        for (int i = 0; i < (int)str.length()-1; ++i){
+            if (copy){
+                str2 += str[i];
+            }
+            if (str[i] == '('){
+                copy = true;
+            }
+        }
+    }
+    else if (inst == 1 && (!Error)){
+        for (int i = 0; i < (int)str.length(); ++i){
+            if (copy){
+                if (str[i] == ','){
+                    break;
+                }
+                str2 += str[i];
+            }
+            if (str[i] == '('){
+                copy = true;
+            }
+        }
+    }
+    else if (inst == 2 && (!Error)){
+        for (int i = 0; i < (int)str.length()-1; ++i){
+            if (copy){
+                str2 += str[i];
+            }
+            if (str[i] == ','){
+                copy = true;
+            }
+        }
+    }
+    
+    return str2;
+}
 
-	// Luego un vector utilizando el arreglo de bytes
-	vector<byte> vdata(data, data + sizeof(data));
-	
-	// Creamos el valor
-	Value val = { 5, vdata };
-	
-	// Insertamos un par clave, valor directamente
-	// en el mapa KV
-	
-	// Nota: Debiera diseñarse una solución más robusta con una interfaz
-	// adecuada para acceder a la estructura.
-	db.insert(std::pair<unsigned long, Value>(1000, val));
-		
-	// Imprimir lo que hemos agregado al mapa KV.
-	cout << db[1000].size << " " << (int) db[1000].data[0] << endl;
-	
-	return 0;
+string SplitString(string str){
+    string str2;
+    for (int i = 0; i < (int)str.length(); ++i){
+        if (str[i] == '('){
+            break;
+        }
+        str2 += str[i]; 
+    }
+    return str2;
+}
+
+bool ValidString(string str){
+    bool valid = true;
+    for (int i = 0; i < (int)str.length(); ++i){
+        if (str[i] == '('){
+            valid = true;
+            break;
+        }
+    }
+    if ((valid) && (str[str.length()-1] == ')')){
+        valid = true;
+    } else {
+        valid = false;
+    }
+    return valid;
+}
+
+int CreateSocket(string str){
+    int length = str.length();
+    char socket_path[length];
+    for (int i = 0; i < length; ++i){
+        socket_path[i] = str[i];
+    }
+
+    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sock == -1){
+        cout << "Can't create a socket! Quitting" << endl;
+        return -1;
+    }
+    struct sockaddr_un addr;
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, socket_path, sizeof(addr.sun_path)-1);
+    unlink(socket_path);
+    if (bind(sock, (struct sockaddr*)&addr, sizeof(addr)) == -1){
+        cout << "bind Error" << endl;
+        return -1;
+    }
+    if(listen(sock, 5) == -1){
+        cout << "listen Error" << endl;
+        return -1;
+    }
+    return sock;
+}
+
+int connecting(int sock, sockaddr_un client, socklen_t clientSize){
+
+    int clientSocket = accept(sock, (sockaddr*)&client, &clientSize);
+    return clientSocket; 
+}
+
+int main(int argc, char const *argv[]){
+    map <int, string> KVStore;
+    string path = "/tmp/db.tuples.sock";
+    int key ;
+    string value;
+    int NumItems = 0;
+    string serverInput;
+
+    if (argc > 1){
+        for (int i = 0; i < argc; ++i){
+            if (argv[i][1] == 's' && i+1 <= argc){
+                path = argv[i+1];
+            }
+        }
+    }
+
+    int listening = CreateSocket(path);
+    if (listening == -1){
+        return 1;
+    }
+    // Wait for a connection
+    sockaddr_un client;
+    socklen_t clientSize = sizeof(client);
+    
+    int clientSocket = connecting(listening, client, clientSize);
+    if (clientSocket > 0){
+        cout << "Client connected!" << endl;
+    }
+    serverInput = "Client connected!";
+    send(clientSocket, serverInput.c_str(), serverInput.size() + 1, 0);
+
+
+    char buf[4096];
+
+    while (true){
+        serverInput = "";
+        memset(buf, 0, 4096);
+        int bytesReceived = recv(clientSocket, buf, 4096, 0);
+        string StrCliente = string(buf, 0, bytesReceived);
+ 
+        if (bytesReceived == 0){
+            cout << "Client disconnected " << endl;
+        }
+        if (ValidString(StrCliente)){
+            if (SplitString(StrCliente) == "insert"){
+                serverInput = "Elemento insertado correctamente";
+                if (SelectInfo(StrCliente,1).length() > 0){
+                    key = stoi(SelectInfo(StrCliente, 1));
+                    value = SelectInfo(StrCliente, 2);
+                    map<int, string>::iterator itr; 
+                    for (itr = KVStore.begin(); itr != KVStore.end(); ++itr){ 
+                        if (itr -> first == key){
+                            serverInput = "Error, Key ya existente!";
+                        }
+                    }
+                    KVStore.insert(pair<int, string>(key, value));
+                } else {
+                    value = SelectInfo(StrCliente, 0);
+                    bool correctkey = false;
+                    srand(time(0));
+                    int contador = 0;
+                    if (NumItems > 0){
+                        while(!correctkey){
+                            key = rand();
+                            map<int, string>::iterator itr; 
+                            for (itr = KVStore.begin(); itr != KVStore.end(); ++itr) { 
+                                if ((itr -> first) == key){
+
+                                    break;
+                                }
+                                if (contador == NumItems){
+                                    correctkey = true;
+                                }
+                                contador++;
+                            } 
+                        }
+                    } else {
+                        key = 1;
+                    }
+                    KVStore.insert(pair<int, string>(key, value));
+                    serverInput = "Elemento insertado correctamente";
+                }
+                NumItems++;
+            }
+            else if (SplitString(StrCliente) == "get"){
+                key = stoi(SelectInfo(StrCliente, 0));
+                map<int, string>::iterator itr; 
+                for (itr = KVStore.begin(); itr != KVStore.end(); ++itr) { 
+                    if ((itr -> first) == key){
+                        serverInput = itr->second;
+                    }
+                }
+            }
+            else if (SplitString(StrCliente) == "peek"){
+                /* code */
+            }
+            else if (SplitString(StrCliente) == "update"){
+                /* code */
+            }
+            else if (SplitString(StrCliente) == "delete"){
+                /* code */
+            }
+
+            string instruction = SplitString(StrCliente);
+            string info = SelectInfo(StrCliente,2);
+            send(clientSocket, serverInput.c_str(), serverInput.size() + 1, 0);
+        }
+        else if (StrCliente == "disconnect" || StrCliente == "quit"){
+            cout << "Client disconnected" << endl;
+            serverInput = "Client disconnected";
+            send(clientSocket, serverInput.c_str(), serverInput.size() + 1, 0);
+            close(clientSocket);
+
+            listening = CreateSocket(path);
+            if (listening == -1){
+                return 1;
+            }
+            sockaddr_un client;
+            socklen_t clientSize = sizeof(client);
+            clientSocket = connecting(listening, client, clientSize);
+            if (clientSocket > 0){
+                serverInput = "Client connected!";
+            }
+            send(clientSocket, serverInput.c_str(), serverInput.size() + 1, 0);
+        }
+        else if (StrCliente == "list"){
+            map<int, string>::iterator itr; 
+            serverInput += "\nKey\tValue\n";
+            for (itr = KVStore.begin(); itr != KVStore.end(); ++itr) { 
+                serverInput += to_string(itr->first); 
+                serverInput += '\t'; 
+                serverInput += itr->second; 
+                serverInput += '\n'; 
+            } 
+            send(clientSocket, serverInput.c_str(), serverInput.size() + 1, 0);
+        }
+    }
+ 
+    close(clientSocket);
+ 
+    return 0;
 }
