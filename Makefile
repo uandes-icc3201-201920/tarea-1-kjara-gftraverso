@@ -1,5 +1,5 @@
 CC = g++
-flags = -Wall -Wextra -Wundef -Werror -Wuninitialized -Winit-self
+flags = -Wall 
 
 ser: server.o
 	$(CC) $(flags) -o server server.o

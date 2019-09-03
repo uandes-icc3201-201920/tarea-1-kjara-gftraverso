@@ -194,7 +194,7 @@ int main(int argc, char const *argv[]){
                     int contador = 0;
                     if (NumItems > 0){
                         while(!correctkey){
-                            key = rand();
+                            key = rand()%101;
                             map<int, string>::iterator itr; 
                             for (itr = KVStore.begin(); itr != KVStore.end(); ++itr) { 
                                 if ((itr -> first) == key){
@@ -211,7 +211,7 @@ int main(int argc, char const *argv[]){
                         key = 1;
                     }
                     KVStore.insert(pair<int, string>(key, value));
-                    serverInput = "Elemento insertado correctamente";
+                    serverInput = to_string(key);
                 }
                 NumItems++;
             }
@@ -225,13 +225,48 @@ int main(int argc, char const *argv[]){
                 }
             }
             else if (SplitString(StrCliente) == "peek"){
-                /* code */
+                key = stoi(SelectInfo(StrCliente, 0));
+                map<int, string>::iterator itr; 
+                serverInput = "false";
+                for (itr = KVStore.begin(); itr != KVStore.end(); ++itr) { 
+                    if ((itr -> first) == key){
+                        serverInput = "true";
+                    }
+                }
             }
             else if (SplitString(StrCliente) == "update"){
-                /* code */
+                key = stoi(SelectInfo(StrCliente, 1));
+                value = SelectInfo(StrCliente, 2);
+                map<int, string>::iterator itr; 
+                bool exist = false;
+                for (itr = KVStore.begin(); itr != KVStore.end(); ++itr){ 
+                    if ((itr -> first) == key){
+                        exist = true;
+                    }
+                }
+                if (exist){
+                    KVStore.erase(key);
+                    KVStore.insert(pair<int, string>(key, value));
+                    serverInput = "Successful update";
+                } else {
+                    serverInput = "Update fail, key no existe!";
+                }
             }
             else if (SplitString(StrCliente) == "delete"){
-                /* code */
+                serverInput = "no existe tal Key.";
+                key = stoi(SelectInfo(StrCliente, 0));
+                bool exist = false;
+                map<int, string>::iterator itr;
+                for (itr = KVStore.begin(); itr != KVStore.end(); ++itr){ 
+                    if ((itr -> first) == key){
+                        serverInput = itr -> second;
+                        exist = true;
+                    }
+                } 
+                if (exist)
+                {
+                    KVStore.erase(key);
+                }
             }
 
             string instruction = SplitString(StrCliente);
@@ -251,6 +286,7 @@ int main(int argc, char const *argv[]){
             sockaddr_un client;
             socklen_t clientSize = sizeof(client);
             clientSocket = connecting(listening, client, clientSize);
+            cout << "Client connected!" << endl;
             if (clientSocket > 0){
                 serverInput = "Client connected!";
             }
