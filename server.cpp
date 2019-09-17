@@ -83,7 +83,7 @@ string SplitString(string str){
 }
 
 bool ValidString(string str){
-    bool valid = true;
+    bool valid = false;
     for (int i = 0; i < (int)str.length(); ++i){
         if (str[i] == '('){
             valid = true;
@@ -118,7 +118,7 @@ int CreateSocket(string str){
         cout << "bind Error" << endl;
         return -1;
     }
-    if(listen(sock, 5) == -1){
+    if(listen(sock, 10) == -1){
         cout << "listen Error" << endl;
         return -1;
     }
@@ -128,7 +128,11 @@ int CreateSocket(string str){
 int connecting(int sock, sockaddr_un client, socklen_t clientSize){
 
     int clientSocket = accept(sock, (sockaddr*)&client, &clientSize);
-    return clientSocket; 
+    return clientSocket;
+}
+
+void* Thread(void* nada){
+    
 }
 
 int main(int argc, char const *argv[]){
@@ -146,6 +150,8 @@ int main(int argc, char const *argv[]){
             }
         }
     }
+
+    cout << "\nSocket path: "<< path << endl;
 
     int listening = CreateSocket(path);
     if (listening == -1){
@@ -271,7 +277,6 @@ int main(int argc, char const *argv[]){
 
             string instruction = SplitString(StrCliente);
             string info = SelectInfo(StrCliente,2);
-            send(clientSocket, serverInput.c_str(), serverInput.size() + 1, 0);
         }
         else if (StrCliente == "disconnect" || StrCliente == "quit"){
             cout << "Client disconnected" << endl;
@@ -290,22 +295,22 @@ int main(int argc, char const *argv[]){
             if (clientSocket > 0){
                 serverInput = "Client connected!";
             }
-            send(clientSocket, serverInput.c_str(), serverInput.size() + 1, 0);
         }
         else if (StrCliente == "list"){
             map<int, string>::iterator itr; 
-            serverInput += "\nKey\tValue\n";
+            serverInput += "\tKey\tValue\n";
             for (itr = KVStore.begin(); itr != KVStore.end(); ++itr) { 
+                serverInput += "\t        "; 
                 serverInput += to_string(itr->first); 
                 serverInput += '\t'; 
                 serverInput += itr->second; 
                 serverInput += '\n'; 
             } 
-            send(clientSocket, serverInput.c_str(), serverInput.size() + 1, 0);
+        } else if (StrCliente != "connect"){
+        	serverInput = "Error, input no valido.";
         }
+        send(clientSocket, serverInput.c_str(), serverInput.size() + 1, 0);
     }
- 
     close(clientSocket);
- 
     return 0;
 }
