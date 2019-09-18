@@ -1,14 +1,11 @@
 CC = g++
 flags = -Wall 
 
-ser: server.o
-	$(CC) $(flags) -o server server.o
+ser: Server.cpp
+	$(CC) $(flags) -std=c++0x server.cpp -lpthread -o server
 
 cli: cliente.o
 	$(CC) $(flags) -o cliente cliente.o
-
-server.o: Server.cpp
-	$(CC) $(flags) -o server.o -c server.cpp
 
 cliente.o: Cliente.cpp
 	$(CC) $(flags) -o cliente.o -c Cliente.cpp

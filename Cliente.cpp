@@ -95,6 +95,8 @@ int main(int argc, char const *argv[]){
 
 	        if (userInput == "disconnect"){
 	        	connected = false;
+    			close(sock);
+    			continue;
 	        }
         }
         cout << "[Cliente]: ";

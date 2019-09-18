@@ -10,9 +10,13 @@
 #include <map>
 #include <iterator> 
 #include <cstdlib>
+#include <pthread.h>// threads
 #include <ctime>
  
 using namespace std;
+map <int, string> KVStore;
+int NumItems = 0;
+char buf[4096];
 
 string SelectInfo(string str, int inst){
     string str2;
@@ -127,56 +131,24 @@ int CreateSocket(string str){
 
 int connecting(int sock, sockaddr_un client, socklen_t clientSize){
 
-    int clientSocket = accept(sock, (sockaddr*)&client, &clientSize);
-    return clientSocket;
+    int Socket = accept(sock, (sockaddr*)&client, &clientSize);
+    return Socket;
 }
 
-void* Thread(void* nada){
-    
-}
-
-int main(int argc, char const *argv[]){
-    map <int, string> KVStore;
-    string path = "/tmp/db.tuples.sock";
-    int key ;
+void* Thread(void* Socket){
+    int clientSocket = *((int *)Socket);
     string value;
-    int NumItems = 0;
-    string serverInput;
-
-    if (argc > 1){
-        for (int i = 0; i < argc; ++i){
-            if (argv[i][1] == 's' && i+1 <= argc){
-                path = argv[i+1];
-            }
-        }
-    }
-
-    cout << "\nSocket path: "<< path << endl;
-
-    int listening = CreateSocket(path);
-    if (listening == -1){
-        return 1;
-    }
-    // Wait for a connection
-    sockaddr_un client;
-    socklen_t clientSize = sizeof(client);
-    
-    int clientSocket = connecting(listening, client, clientSize);
-    if (clientSocket > 0){
-        cout << "Client connected!" << endl;
-    }
-    serverInput = "Client connected!";
-    send(clientSocket, serverInput.c_str(), serverInput.size() + 1, 0);
-
-
-    char buf[4096];
-
-    while (true){
-        serverInput = "";
+    int key ;
+    while(true){
+        string serverInput = "";
         memset(buf, 0, 4096);
         int bytesReceived = recv(clientSocket, buf, 4096, 0);
         string StrCliente = string(buf, 0, bytesReceived);
- 
+        if (StrCliente == "connect")
+        {
+            cout << "Client connected!" << endl;
+            serverInput = "Client connected!";
+        }
         if (bytesReceived == 0){
             cout << "Client disconnected " << endl;
         }
@@ -274,7 +246,6 @@ int main(int argc, char const *argv[]){
                     KVStore.erase(key);
                 }
             }
-
             string instruction = SplitString(StrCliente);
             string info = SelectInfo(StrCliente,2);
         }
@@ -284,17 +255,7 @@ int main(int argc, char const *argv[]){
             send(clientSocket, serverInput.c_str(), serverInput.size() + 1, 0);
             close(clientSocket);
 
-            listening = CreateSocket(path);
-            if (listening == -1){
-                return 1;
-            }
-            sockaddr_un client;
-            socklen_t clientSize = sizeof(client);
-            clientSocket = connecting(listening, client, clientSize);
-            cout << "Client connected!" << endl;
-            if (clientSocket > 0){
-                serverInput = "Client connected!";
-            }
+            break;
         }
         else if (StrCliente == "list"){
             map<int, string>::iterator itr; 
@@ -306,11 +267,45 @@ int main(int argc, char const *argv[]){
                 serverInput += itr->second; 
                 serverInput += '\n'; 
             } 
-        } else if (StrCliente != "connect"){
-        	serverInput = "Error, input no valido.";
+        } 
+        else if (StrCliente != "connect"){
+            serverInput = "Error, input no valido.";
         }
         send(clientSocket, serverInput.c_str(), serverInput.size() + 1, 0);
     }
     close(clientSocket);
+    pthread_exit(NULL);
+}
+
+int main(int argc, char const *argv[]){
+    string path = "/tmp/db.tuples.sock";
+    int clientSocket;
+    if (argc > 1){
+        for (int i = 0; i < argc; ++i){
+            if (argv[i][1] == 's' && i+1 <= argc){
+                path = argv[i+1];
+            }
+        }
+    }
+
+    cout << "\nSocket path: "<< path << endl;
+
+    int listening = CreateSocket(path);
+    if (listening == -1){
+        return 1;
+    }
+
+    while (true){
+        pthread_t thread1;
+        sockaddr_un client;
+        socklen_t clientSize = sizeof(client);
+        // Wait for a connection
+        clientSocket = connecting(listening, client, clientSize);
+        if( pthread_create( &thread1 , NULL , Thread, (void*) &clientSocket) < 0)
+        {
+            cout << "No se pudo crear el thread" << endl;
+            return 1;
+        }
+    }
     return 0;
 }
