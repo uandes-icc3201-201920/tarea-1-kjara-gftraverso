@@ -17,6 +17,7 @@ using namespace std;
 map <int, string> KVStore;
 int NumItems = 0;
 char buf[4096];
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 string SelectInfo(string str, int inst){
     string str2;
@@ -152,6 +153,7 @@ void* Thread(void* Socket){
         if (bytesReceived == 0){
             cout << "Client disconnected " << endl;
         }
+        pthread_mutex_lock(&lock);
         if (ValidString(StrCliente)){
             if (SplitString(StrCliente) == "insert"){
                 serverInput = "Elemento insertado correctamente";
@@ -272,6 +274,7 @@ void* Thread(void* Socket){
             serverInput = "Error, input no valido.";
         }
         send(clientSocket, serverInput.c_str(), serverInput.size() + 1, 0);
+        pthread_mutex_unlock(&lock);
     }
     close(clientSocket);
     pthread_exit(NULL);
