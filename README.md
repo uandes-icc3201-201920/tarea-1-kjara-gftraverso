@@ -16,7 +16,7 @@ Los ***sockets*** son canales bidireccionales de comunicación. Se puede usar el
 
 Los ***threads*** se entiende como flujo de ejecución que vive dentro de un proceso, compartes espacios de memoria y recursos del proceso a que pertenecen. Son muy utilizados para la programación paralela, poder descomponer un programa en varios threads para conseguir paralelismo (multiprocesamiento).
 
- * **Dificultades encontradas:** Conocíamos la parte teórica de los sockets y su funcionamiento, ya se estaba familiarizado en la manera de programarlos por lo que no hubo mayor problema. Sin embargo, la implementación de threads fue complejo de manejarlos, pero al indagar e investigar más sobre el tema se pudieron realizar las funciones requeridas para esta entrega.
+ * **Dificultades encontradas:** Conocíamos la parte teórica de los sockets y su funcionamiento, ya se estaba familiarizado en la manera de programarlos por lo que no hubo mayor problema. Sin embargo, la implementación de threads fue complejo manejarlos, pero al indagar e investigar más sobre el tema se pudieron realizar las funciones requeridas para esta entrega.
  
 
 * **Funciones no implementadas:** En esta parte de la tarea todas las funciones fueron implementadas. Sin embargo, cuando el cliente inicia tiene un tiempo máximo de 10 segundos para conectarse a un servidor (el cronómetro, esperar 10 segundos no fue implementado, esto era de la entrega anterior, no creímos necesaria su creación dado que no afectaba esta entrega).
